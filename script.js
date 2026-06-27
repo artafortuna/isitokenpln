@@ -138,7 +138,6 @@ document.getElementById('pln-form').addEventListener('submit', async (e) => {
     const dataToken = {
         id: editId ? editId : Date.now(),
         tanggal: document.getElementById('tanggal').value,
-        jenisLokasi: document.getElementById('jenisLokasi').value,
         idPelanggan: document.getElementById('idPelanggan').value,
         noToken: document.getElementById('noToken').value,
         nominal: parseFloat(document.getElementById('nominal').value) || 0,
@@ -158,7 +157,6 @@ document.getElementById('pln-form').addEventListener('submit', async (e) => {
         
         document.getElementById('filterTahun').value = dataToken.tanggal.substring(0, 4);
         document.getElementById('filterBulan').value = dataToken.tanggal.substring(5, 7);
-        document.getElementById('filterLokasi').value = dataToken.jenisLokasi;
         
         document.querySelectorAll('.tab-btn')[1].click(); 
     } catch (error) {
@@ -169,7 +167,7 @@ document.getElementById('pln-form').addEventListener('submit', async (e) => {
 
 const renderTable = async () => {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<tr><td colspan="12">Memuat data...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11">Memuat data...</td></tr>';
 
     try {
         let allData = await getAllFromDB();
@@ -177,7 +175,6 @@ const renderTable = async () => {
 
         const filterBulan = document.getElementById('filterBulan').value;
         const filterTahun = document.getElementById('filterTahun').value;
-        const filterLokasi = document.getElementById('filterLokasi').value;
 
         let sumBulNominal = 0, sumBulKwh = 0;
         let sumTahNominal = 0, sumTahKwh = 0;
@@ -186,9 +183,7 @@ const renderTable = async () => {
             const itemTahun = item.tanggal.substring(0, 4);
             const itemBulan = item.tanggal.substring(5, 7);
             
-            const lokasiMatch = filterLokasi === 'all' || item.jenisLokasi === filterLokasi;
-
-            if (itemTahun === filterTahun && lokasiMatch) {
+            if (itemTahun === filterTahun) {
                 sumTahNominal += item.nominal;
                 if(item.penggunaan !== null) sumTahKwh += item.penggunaan;
                 
@@ -203,7 +198,7 @@ const renderTable = async () => {
 
         tbody.innerHTML = '';
         if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="12" style="color: var(--text-muted); padding: 20px;">Belum ada data untuk periode dan lokasi ini.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" style="color: var(--text-muted); padding: 20px;">Belum ada data untuk periode ini.</td></tr>`;
         } else {
             filteredData.forEach(item => {
                 const tr = document.createElement('tr');
@@ -211,11 +206,9 @@ const renderTable = async () => {
                 
                 const tdPenggunaan = item.penggunaan !== null ? item.penggunaan.toFixed(2) : '-';
                 const penggunaanRp = item.penggunaan !== null ? formatRupiah(item.penggunaan * 415) : '-';
-                const lokasiOutput = item.jenisLokasi || 'Rumah';
 
                 tr.innerHTML = `
                     <td>${formatDateID(item.tanggal)}</td>
-                    <td><b>${lokasiOutput}</b></td>
                     <td>${item.idPelanggan}</td>
                     <td style="font-family: monospace; letter-spacing: 1px;">${item.noToken}</td>
                     <td class="text-blue"><b>${formatRupiah(item.nominal)}</b></td>
@@ -240,7 +233,7 @@ const renderTable = async () => {
         document.getElementById('sumTahunKwh').textContent = sumTahKwh.toFixed(2) + ' KWh';
 
     } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="12" style="color: var(--danger);">Error memuat database.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="color: var(--danger);">Error memuat database.</td></tr>`;
         console.error(error);
     }
 };
@@ -255,7 +248,6 @@ window.editData = async (id) => {
         if (!item) return;
 
         document.getElementById('tanggal').value = item.tanggal;
-        document.getElementById('jenisLokasi').value = item.jenisLokasi || 'Rumah';
         document.getElementById('idPelanggan').value = item.idPelanggan;
         document.getElementById('noToken').value = item.noToken;
         document.getElementById('nominal').value = item.nominal;
@@ -304,7 +296,6 @@ const resetFormState = () => {
 // ==========================================
 // 7. INISIALISASI
 // ==========================================
-document.getElementById('filterLokasi').addEventListener('change', renderTable);
 document.getElementById('filterBulan').addEventListener('change', renderTable);
 document.getElementById('filterTahun').addEventListener('input', renderTable);
 
