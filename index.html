@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekap Token PLN Pro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-brand" style="display: flex; align-items: center; gap: 10px;">
+            ⚡ PLN Tracker Pro 
+            <button id="theme-toggle" class="theme-btn" title="Ganti Tema">🌙</button>
+        </div>
+        <div class="nav-menu">
+            <button class="tab-btn active" onclick="switchTab('form-view')">📝 Input Data</button>
+            <button class="tab-btn" onclick="switchTab('data-view')">📊 Riwayat & Rekap</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        
+        <main id="form-view" class="view-section active">
+            <div class="card">
+                <h2 class="section-title" id="formTitle">Tambah Data Token Baru</h2>
+                <form id="pln-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tanggal">Tanggal</label>
+                            <input type="date" id="tanggal" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="jenisLokasi">Tujuan</label>
+                            <select id="jenisLokasi" required>
+                                <option value="Rumah">Rumah</option>
+                                <option value="Usaha">Usaha</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="idPelanggan">ID Pelanggan / No. Meter</label>
+                            <input type="number" id="idPelanggan" placeholder="Cth: 14123456789" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="noToken">Nomor Token (20 Digit)</label>
+                            <input type="text" id="noToken" maxlength="24" placeholder="Cth: 1234-5678-9012-3456" required>
+                        </div>
+                        
+                        <div class="form-group" style="grid-column: 1 / -1; border-top: 2px dashed var(--border-color); padding-top: 15px; margin-top: 5px;">
+                            <label for="nominal">Nominal Pembelian (Rp)</label>
+                            <select id="nominal" required>
+                                <option value="" disabled selected>-- Pilih Nominal --</option>
+                                <option value="20000">20.000</option>
+                                <option value="50000">50.000</option>
+                                <option value="100000">100.000</option>
+                                <option value="200000">200.000</option>
+                                <option value="500000">500.000</option>
+                                <option value="1000000">1.000.000</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="kwhDidapat">Jml KWh Didapat</label>
+                            <input type="number" id="kwhDidapat" step="0.01" required placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="saldoAwal">Saldo Awal KWh (Sebelum Isi)</label>
+                            <input type="number" id="saldoAwal" step="0.01" required placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="saldoAkhir">Saldo Akhir KWh (Sebelum Isi Berikutnya)</label>
+                            <input type="number" id="saldoAkhir" step="0.01" placeholder="Opsional (Isi nanti)">
+                        </div>
+                        <div class="form-group highlight-group">
+                            <label for="penggunaan">Total Penggunaan KWh</label>
+                            <input type="number" id="penggunaan" readonly placeholder="Otomatis Dihitung">
+                            <small>(Saldo Awal + KWh Didapat - Saldo Akhir)</small>
+                        </div>
+                        
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label for="catatan">Catatan</label>
+                            <input type="text" id="catatan" placeholder="Cth: Pembelian via M-Banking awal bulan">
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button type="submit" class="btn btn-primary" id="btnSubmit">💾 Simpan Data</button>
+                        <button type="button" class="btn btn-secondary" id="btnCancelEdit" style="display:none;">❌ Batal Edit</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <main id="data-view" class="view-section">
+            <div class="card">
+                <div class="filter-section">
+                    <h2 class="section-title" style="margin: 0;">Analisis & Riwayat</h2>
+                    <div class="filter-controls">
+                        <label for="filterLokasi">Tujuan:</label>
+                        <select id="filterLokasi">
+                            <option value="all">Semua</option>
+                            <option value="Rumah">Rumah</option>
+                            <option value="Usaha">Usaha</option>
+                        </select>
+                        <label for="filterBulan">Bulan:</label>
+                        <select id="filterBulan">
+                            <option value="01">Januari</option>
+                            <option value="02">Februari</option>
+                            <option value="03">Maret</option>
+                            <option value="04">April</option>
+                            <option value="05">Mei</option>
+                            <option value="06">Juni</option>
+                            <option value="07">Juli</option>
+                            <option value="08">Agustus</option>
+                            <option value="09">September</option>
+                            <option value="10">Oktober</option>
+                            <option value="11">November</option>
+                            <option value="12">Desember</option>
+                            <option value="all">Semua Bulan</option>
+                        </select>
+                        <label for="filterTahun">Tahun:</label>
+                        <input type="number" id="filterTahun" min="2000" max="2100">
+                    </div>
+                </div>
+
+                <div class="summary-wrapper">
+                    <div class="summary-card">
+                        <h3>Rekap Bulanan</h3>
+                        <div class="summary-details">
+                            <div>
+                                <span>Total Pembelian:</span>
+                                <strong id="sumBulanNominal" class="text-blue">Rp 0</strong>
+                            </div>
+                            <div>
+                                <span>Total Penggunaan:</span>
+                                <strong id="sumBulanKwh" class="text-yellow">0.00 KWh</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="summary-card dark">
+                        <h3>Rekap Tahunan</h3>
+                        <div class="summary-details">
+                            <div>
+                                <span>Total Pembelian:</span>
+                                <strong id="sumTahunNominal" class="text-blue-light">Rp 0</strong>
+                            </div>
+                            <div>
+                                <span>Total Penggunaan:</span>
+                                <strong id="sumTahunKwh" class="text-yellow">0.00 KWh</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="table-title">Tabel Riwayat Pembelian</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Tujuan</th>
+                                <th>ID Pel / Meter</th>
+                                <th>No. Token</th>
+                                <th>Nominal (Rp)</th>
+                                <th>KWh Didapat</th>
+                                <th>Saldo Awal</th>
+                                <th>Saldo Akhir</th>
+                                <th>Terpakai (KWh)</th>
+                                <th>Terpakai (Rp)</th>
+                                <th>Catatan</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="floating-footer">
+        <p>&copy; <span id="year"></span> PT Arta Makmur Jaya Sentosa. Hak Cipta Dilindungi.</p>
+        <p>Aplikasi Pencatat Token Standar Industri.</p>
+        </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
