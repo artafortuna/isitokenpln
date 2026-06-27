@@ -76,6 +76,11 @@ const formatDateID = (dateStr) => {
     return `${day}/${month}/${year}`;
 };
 
+// Fungsi klik pintasan ID Favorit
+window.pilihFavId = (id) => {
+    document.getElementById('idPelanggan').value = id;
+};
+
 // ==========================================
 // 4. DATABASE (IndexedDB)
 // ==========================================
@@ -127,6 +132,29 @@ const deleteFromDB = (id) => {
     });
 };
 
+// Rendering daftar tombol ID pelanggan terpopuler/terakhir dimasukkan
+const renderFavoriteIDs = async () => {
+    const container = document.getElementById('fav-id-container');
+    container.innerHTML = '';
+    try {
+        const allData = await getAllFromDB();
+        // Ambil semua ID Pelanggan yang unik
+        const uniqueIDs = [...new Set(allData.map(item => item.idPelanggan).filter(Boolean))];
+        
+        // Tampilkan maksimal 5 ID unik sebagai tombol cepat
+        uniqueIDs.slice(0, 5).forEach(id => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-preset';
+            btn.textContent = id;
+            btn.onclick = () => pilihFavId(id);
+            container.appendChild(btn);
+        });
+    } catch (error) {
+        console.error(error);
+    }
+};
+
 // ==========================================
 // 5. LOGIKA FORM SUBMIT & RENDERING
 // ==========================================
@@ -156,8 +184,8 @@ document.getElementById('pln-form').addEventListener('submit', async (e) => {
         resetFormState();
         
         document.getElementById('filterTahun').value = dataToken.tanggal.substring(0, 4);
-        document.getElementById('filterBulan').value = dataToken.tanggal.substring(5, 7);
         
+        await renderFavoriteIDs(); 
         document.querySelectorAll('.tab-btn')[1].click(); 
     } catch (error) {
         alert("Gagal menyimpan data ke IndexedDB!");
@@ -167,45 +195,64 @@ document.getElementById('pln-form').addEventListener('submit', async (e) => {
 
 const renderTable = async () => {
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<tr><td colspan="11">Memuat data...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13">Memuat data...</td></tr>';
 
     try {
         let allData = await getAllFromDB();
+        // Urutkan dari yang terbaru ke terlama
         allData.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
 
-        const filterBulan = document.getElementById('filterBulan').value;
         const filterTahun = document.getElementById('filterTahun').value;
-
-        let sumBulNominal = 0, sumBulKwh = 0;
         let sumTahNominal = 0, sumTahKwh = 0;
 
         const filteredData = allData.filter(item => {
             const itemTahun = item.tanggal.substring(0, 4);
-            const itemBulan = item.tanggal.substring(5, 7);
-            
             if (itemTahun === filterTahun) {
                 sumTahNominal += item.nominal;
                 if(item.penggunaan !== null) sumTahKwh += item.penggunaan;
-                
-                if (filterBulan === 'all' || itemBulan === filterBulan) {
-                    sumBulNominal += item.nominal;
-                    if(item.penggunaan !== null) sumBulKwh += item.penggunaan;
-                    return true; 
-                }
+                return true; 
             }
             return false;
         });
 
         tbody.innerHTML = '';
         if (filteredData.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" style="color: var(--text-muted); padding: 20px;">Belum ada data untuk periode ini.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="13" style="color: var(--text-muted); padding: 20px;">Belum ada data untuk tahun ini.</td></tr>`;
         } else {
-            filteredData.forEach(item => {
+            filteredData.forEach((item) => {
                 const tr = document.createElement('tr');
                 const tdAkhir = item.saldoAkhir !== null ? item.saldoAkhir : '<span style="color:var(--danger); font-size:0.95rem;"><i>Belum diisi</i></span>';
-                
                 const tdPenggunaan = item.penggunaan !== null ? item.penggunaan.toFixed(2) : '-';
                 const penggunaanRp = item.penggunaan !== null ? formatRupiah(item.penggunaan * 415) : '-';
+
+                // LOGIKA HITUNG RATA-RATA HARIAN
+                const itemIndex = allData.indexOf(item);
+                let newerRecord = null;
+                // Cari data pengisian token SELANJUTNYA untuk ID Pelanggan yang sama
+                for (let i = itemIndex - 1; i >= 0; i--) {
+                    if (allData[i].idPelanggan === item.idPelanggan) {
+                        newerRecord = allData[i];
+                        break;
+                    }
+                }
+
+                let daysDiff = 0;
+                if (newerRecord) {
+                    daysDiff = (new Date(newerRecord.tanggal) - new Date(item.tanggal)) / (1000 * 60 * 60 * 24);
+                } else if (item.saldoAkhir !== null) {
+                    // Jika tidak ada data selanjutnya tapi saldo akhir diisi, asumsikan dihitung hari ini
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    const itemDate = new Date(item.tanggal);
+                    itemDate.setHours(0,0,0,0);
+                    daysDiff = (today - itemDate) / (1000 * 60 * 60 * 24);
+                }
+                
+                // Pastikan minimal hari adalah 1 untuk mencegah error dibagi Nol
+                daysDiff = Math.max(1, Math.round(daysDiff));
+
+                const tdRataKwh = item.penggunaan !== null ? (item.penggunaan / daysDiff).toFixed(2) : '-';
+                const tdRataRp = item.penggunaan !== null ? formatRupiah((item.penggunaan * 415) / daysDiff) : '-';
 
                 tr.innerHTML = `
                     <td>${formatDateID(item.tanggal)}</td>
@@ -217,6 +264,8 @@ const renderTable = async () => {
                     <td>${tdAkhir}</td>
                     <td style="background-color: var(--terpakai-bg); font-weight: bold;">${tdPenggunaan}</td>
                     <td style="background-color: var(--terpakai-bg); font-weight: bold; color: var(--pln-yellow-dark);">${penggunaanRp}</td>
+                    <td style="background-color: var(--highlight-bg); font-weight: bold;">${tdRataKwh}</td>
+                    <td style="background-color: var(--highlight-bg); font-weight: bold; color: var(--pln-blue-dark);">${tdRataRp}</td>
                     <td>${item.catatan}</td>
                     <td class="actions-cell">
                         <button class="btn-sm btn-edit" onclick="editData(${item.id})">Edit</button>
@@ -227,13 +276,11 @@ const renderTable = async () => {
             });
         }
 
-        document.getElementById('sumBulanNominal').textContent = formatRupiah(sumBulNominal);
-        document.getElementById('sumBulanKwh').textContent = sumBulKwh.toFixed(2) + ' KWh';
         document.getElementById('sumTahunNominal').textContent = formatRupiah(sumTahNominal);
         document.getElementById('sumTahunKwh').textContent = sumTahKwh.toFixed(2) + ' KWh';
 
     } catch (error) {
-        tbody.innerHTML = `<tr><td colspan="11" style="color: var(--danger);">Error memuat database.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" style="color: var(--danger);">Error memuat database.</td></tr>`;
         console.error(error);
     }
 };
@@ -272,6 +319,7 @@ window.hapusData = async (id) => {
     if(confirm('Data ini akan dihapus permanen. Apakah Anda yakin?')) {
         try {
             await deleteFromDB(id);
+            await renderFavoriteIDs(); 
             renderTable();
         } catch (error) {
             alert("Gagal menghapus data!");
@@ -296,7 +344,6 @@ const resetFormState = () => {
 // ==========================================
 // 7. INISIALISASI
 // ==========================================
-document.getElementById('filterBulan').addEventListener('change', renderTable);
 document.getElementById('filterTahun').addEventListener('input', renderTable);
 
 const initApp = async () => {
@@ -304,7 +351,7 @@ const initApp = async () => {
         await initDB();
         const dateNow = new Date();
         document.getElementById('filterTahun').value = dateNow.getFullYear();
-        document.getElementById('filterBulan').value = String(dateNow.getMonth() + 1).padStart(2, '0');
+        await renderFavoriteIDs(); 
         renderTable();
     } catch (error) {
         alert("Browser Anda tidak mendukung IndexedDB. Data tidak bisa disimpan.");
@@ -313,3 +360,6 @@ const initApp = async () => {
 };
 
 initApp();
+
+// === MENGUBAH TEKS MARQUEE ===
+document.getElementById('teks-berjalan').innerHTML = 'Selamat datang di PLN Tracker Pro! Jangan lupa melengkapi Saldo Akhir KWh Anda sebelum melakukan pengisian token berikutnya agar penggunaan dapat terhitung otomatis. Beli token listrik murah, mudah, dan cepat di <a href="https://afortuna.id" target="_blank" style="color: var(--pln-yellow-dark); text-decoration: underline;">afortuna.id</a> ya!';
